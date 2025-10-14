@@ -1,0 +1,5 @@
+{
+  "name": "AI 合約 神器",
+  "description": "一個使用 Gemini API 的智慧合約分析系統。上傳您的合約掃描檔(PDF)，系統將自動解析出關鍵資訊，如時程、人力和付款條件。您可以透過自然語言對單一或多份合約進行提問，快速獲取洞察。",
+  "requestFramePermissions": []
+}
