@@ -1,11 +1,6 @@
+```
 
 import type { GenerateContentResponse } from '@google/genai';
-
-export interface TokenUsage {
-    promptTokens: number;
-    outputTokens: number;
-    totalTokens: number;
-}
 
 export interface ExtractedData {
     summary: string;
@@ -14,22 +9,29 @@ export interface ExtractedData {
     paymentTerms: string[];
 }
 
-export interface Contract {
-    id: string;
-    name: string;
-    thumbnailUrl: string;
-    status: 'analyzing' | 'completed' | 'error';
-    errorMessage?: string;
-    extractedData?: ExtractedData;
-    chatHistory: ChatMessage[];
-    analysisTokenCount?: TokenUsage;
-    groupId: string | null;
+export interface TokenUsage {
+    promptTokens: number;
+    outputTokens: number;
+    totalTokens: number;
 }
 
 export interface ChatMessage {
-    sender: 'user' | 'ai';
-    text: string;
-    tokenCount?: TokenUsage;
+    id?: number;
+    role: 'user' | 'ai'; // Backend uses 'role', frontend used 'sender'
+    content: string; // Backend uses 'content', frontend used 'text'
+    timestamp?: string;
+}
+
+export interface Contract {
+    id: number; // Backend uses int
+    title: string; // Backend uses title
+    filename: string;
+    status: 'uploading' | 'analyzing' | 'completed' | 'error';
+    extracted_data?: ExtractedData; // Backend uses snake_case
+    created_at: string;
+    chat_history: ChatMessage[];
+    // Computed on frontend
+    thumbnailUrl?: string;
 }
 
 export interface ContractGroup {

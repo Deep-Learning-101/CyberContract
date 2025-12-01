@@ -1,29 +1,25 @@
-
+```
 import React, { useState, useEffect, useRef } from 'react';
-import type { Contract, ChatMessage, ContractGroup } from '../types';
-import { answerGeneralQuestion as answerGeneralQuestionService } from '../services/geminiService';
+import type { Contract, ChatMessage } from '../types';
+import { globalChat } from '../services/api';
 import ChatInterface from './ChatInterface';
 
 interface GlobalQueryViewProps {
     contracts: Contract[];
-    groups: ContractGroup[];
 }
 
-const GlobalQueryView: React.FC<GlobalQueryViewProps> = ({ contracts, groups }) => {
+const GlobalQueryView: React.FC<GlobalQueryViewProps> = ({ contracts }) => {
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [isAnswering, setIsAnswering] = useState(false);
-    const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
     const hasRunIntro = useRef(false);
 
     const handleQuery = async (currentQuery: string) => {
         if (!currentQuery.trim() || isAnswering) return;
 
-        const contractsToQuery = contracts.filter(c => 
-            c.status === 'completed' && c.groupId && selectedGroupIds.has(c.groupId)
-        );
+        const contractsToQuery = contracts.filter(c => c.status === 'completed');
         
         if (contractsToQuery.length === 0) {
-            setChatHistory(prev => [...prev, { sender: 'ai', text: "您選擇的群組內沒有可供查詢的合約，請確認群組中有已分析完成的合約。" }]);
+            setChatHistory(prev => [...prev, { sender: 'ai', text: "沒有可供查詢的合約，請確認有已分析完成的合約。" }]);
             return;
         }
         
@@ -32,8 +28,13 @@ const GlobalQueryView: React.FC<GlobalQueryViewProps> = ({ contracts, groups }) 
         setIsAnswering(true);
         
         try {
-            const { aiResponse, tokenUsage } = await answerGeneralQuestionService(contractsToQuery, currentQuery);
-            setChatHistory([...newHistory, { sender: 'ai', text: aiResponse, tokenCount: tokenUsage }]);
+            const contractIds = contractsToQuery.map(c => c.id);
+            const aiMsg = await globalChat(contractIds, currentQuery);
+            // Adapt backend ChatMessage (role/content) to frontend ChatMessage (sender/text)
+            // Frontend ChatMessage: { sender: 'user' | 'ai', text: string, tokenCount?: ... }
+            // Backend returns: { role: 'ai', content: string, ... }
+            
+            setChatHistory([...newHistory, { sender: 'ai', text: aiMsg.content }]);
         } catch (err) {
             console.error(err);
             setChatHistory([...newHistory, { sender: 'ai', text: '抱歉，處理您的跨文件查詢時發生錯誤。' }]);
@@ -45,24 +46,11 @@ const GlobalQueryView: React.FC<GlobalQueryViewProps> = ({ contracts, groups }) 
     useEffect(() => {
         if (!hasRunIntro.current && contracts.length > 0) {
             setChatHistory([
-                { sender: 'ai', text: '你好！我是跨文件智慧助理。請在左側選擇您想查詢的合約群組，然後在這裡向我提問。' }
+                { sender: 'ai', text: '你好！我是跨文件智慧助理。我可以同時分析所有已完成的合約。' }
             ]);
             hasRunIntro.current = true;
         }
     }, [contracts]);
-
-
-    const handleToggleSelection = (id: string) => {
-        setSelectedGroupIds(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
-            return newSet;
-        });
-    };
     
     const handleSendMessage = (message: string) => {
         handleQuery(message);
@@ -82,27 +70,11 @@ const GlobalQueryView: React.FC<GlobalQueryViewProps> = ({ contracts, groups }) 
 
     return (
         <div className="flex h-full w-full bg-slate-800 rounded-xl overflow-hidden shadow-lg shadow-black/20">
-            {/* Left Column: Controls */}
+            {/* Left Column: Controls - Simplified for now */}
             <div className="w-1/3 flex flex-col border-r border-slate-700 p-6 overflow-y-auto">
                 <h2 className="text-xl font-bold mb-2 text-white">查詢設定</h2>
-                <p className="text-sm text-slate-400 mb-6">請選擇要納入查詢範圍的合約群組。</p>
+                <p className="text-sm text-slate-400 mb-6">目前將查詢所有已完成的合約 ({contracts.filter(c => c.status === 'completed').length} 份)。</p>
                 
-                <div className="space-y-3">
-                    {groups.length > 0 ? groups.map(group => (
-                        <label key={group.id} className="flex items-center space-x-3 cursor-pointer p-3 rounded-lg hover:bg-slate-700/50 transition-colors">
-                            <input 
-                                type="checkbox"
-                                checked={selectedGroupIds.has(group.id)}
-                                onChange={() => handleToggleSelection(group.id)}
-                                className="h-5 w-5 text-purple-500 bg-slate-600 border-slate-500 rounded focus:ring-purple-500 focus:ring-2 transition"
-                            />
-                            <span className="font-medium text-slate-300 truncate">{group.name} ({group.contractIds.length})</span>
-                        </label>
-                    )) : (
-                        <p className="text-slate-500 text-center p-4">尚未建立任何群組。請回到主列表建立群組並將合約加入。</p>
-                    )}
-                </div>
-
                 <div className="mt-auto pt-6 text-xs text-slate-500">
                     <p className="font-semibold mb-2 text-slate-400">提示：</p>
                     <p>您可以提出比較性問題，例如：「比較 A 專案與 B 專案的付款時程有何不同？」</p>
@@ -116,7 +88,7 @@ const GlobalQueryView: React.FC<GlobalQueryViewProps> = ({ contracts, groups }) 
                     messages={chatHistory}
                     onSendMessage={handleSendMessage}
                     isAnswering={isAnswering}
-                    placeholder={selectedGroupIds.size > 0 ? '對選定的群組提問...' : '請先在左側選擇查詢範圍'}
+                    placeholder={'對所有合約提問...'}
                 />
             </div>
         </div>

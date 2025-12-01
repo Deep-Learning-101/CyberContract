@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Spinner from './Spinner';
 
 interface AnalyzingViewProps {
-    contractName: string;
+    contractTitle: string;
 }
 
 const analyzingMessages = [
@@ -15,7 +15,7 @@ const analyzingMessages = [
     '即將完成，請稍候片刻...',
 ];
 
-const AnalyzingView: React.FC<AnalyzingViewProps> = ({ contractName }) => {
+const AnalyzingView: React.FC<AnalyzingViewProps> = ({ contractTitle }) => {
     const [messageIndex, setMessageIndex] = useState(0);
 
     useEffect(() => {
@@ -37,7 +37,7 @@ const AnalyzingView: React.FC<AnalyzingViewProps> = ({ contractName }) => {
         <div className="flex-grow flex flex-col items-center justify-center text-center text-slate-400">
             <Spinner />
             <h2 className="mt-4 text-2xl font-semibold text-slate-300">正在分析合約...</h2>
-            <p className="mt-2 max-w-full px-4 truncate">{contractName}</p>
+            <p className="mt-2 max-w-full px-4 truncate">{contractTitle}</p>
             <div className="mt-4 text-lg text-indigo-300 h-8">
                 <p>{analyzingMessages[messageIndex]}</p>
             </div>
