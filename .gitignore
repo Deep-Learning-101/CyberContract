@@ -144,3 +144,4 @@ __pycache/
 .env
 .DS_Store
 dist/
+desktop.ini
