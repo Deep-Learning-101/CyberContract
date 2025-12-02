@@ -222,3 +222,67 @@ def global_chat(
         "content": ai_response_text,
         "timestamp": datetime.now()
     }
+
+# ============ Group Management APIs ============
+
+@app.get("/api/groups", response_model=List[schemas.Group])
+def read_groups(db: Session = Depends(get_db)):
+    """取得所有群組"""
+    groups = db.query(models.Group).order_by(models.Group.created_at).all()
+    return groups
+
+@app.post("/api/groups", response_model=schemas.Group)
+def create_group(group: schemas.GroupCreate, db: Session = Depends(get_db)):
+    """建立新群組"""
+    db_group = models.Group(name=group.name)
+    db.add(db_group)
+    db.commit()
+    db.refresh(db_group)
+    return db_group
+
+@app.put("/api/groups/{group_id}", response_model=schemas.Group)
+def update_group(group_id: int, group: schemas.GroupUpdate, db: Session = Depends(get_db)):
+    """重新命名群組"""
+    db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not db_group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    db_group.name = group.name
+    db.commit()
+    db.refresh(db_group)
+    return db_group
+
+@app.delete("/api/groups/{group_id}")
+def delete_group(group_id: int, db: Session = Depends(get_db)):
+    """刪除群組（群組內的合約會移至未分組）"""
+    db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not db_group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    
+    # 將群組內的合約移到未分組
+    db.query(models.Contract).filter(models.Contract.group_id == group_id).update({"group_id": None})
+    
+    db.delete(db_group)
+    db.commit()
+    return {"ok": True}
+
+@app.put("/api/contracts/{contract_id}/group")
+def move_contract_to_group(
+    contract_id: int, 
+    request: schemas.MoveContractRequest,
+    db: Session = Depends(get_db)
+):
+    """移動合約到群組（group_id 為 null 表示移至未分組）"""
+    contract = db.query(models.Contract).filter(models.Contract.id == contract_id).first()
+    if not contract:
+        raise HTTPException(status_code=404, detail="Contract not found")
+    
+    if request.group_id is not None:
+        group = db.query(models.Group).filter(models.Group.id == request.group_id).first()
+        if not group:
+            raise HTTPException(status_code=404, detail="Group not found")
+    
+    contract.group_id = request.group_id
+    db.commit()
+    return {"ok": True}
+
