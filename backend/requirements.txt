@@ -7,3 +7,4 @@ pdf2image
 python-dotenv
 aiofiles
 streamlit
+pandas

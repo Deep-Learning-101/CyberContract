@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import os
 import sys
 from sqlalchemy.orm import Session
@@ -110,6 +111,11 @@ with st.sidebar:
             time.sleep(0.5)
             st.rerun()
             
+    # Batch Management Button
+    if st.button("📋 批次管理合約", use_container_width=True):
+        st.session_state.selected_contract_id = "batch_manager"
+        st.rerun()
+            
     # Contract List
     st.subheader("合約列表")
     
@@ -190,6 +196,84 @@ if st.session_state.selected_contract_id == "global":
                     response = gemini_service.chat_with_multiple_contracts(contracts_data, prompt)
                     st.write(response)
                     st.session_state.global_messages.append({"role": "ai", "content": response})
+    db.close()
+
+elif st.session_state.selected_contract_id == "batch_manager":
+    st.header("📋 批次合約管理")
+    
+    db = get_session()
+    contracts = db.query(models.Contract).all()
+    groups = db.query(models.Group).all()
+    
+    if not contracts:
+        st.info("目前沒有合約可管理。")
+    else:
+        # Prepare Data
+        group_map = {g.id: g.name for g in groups}
+        group_map[None] = "未分組"
+        
+        # Reverse map for saving: Name -> ID
+        group_name_to_id = {v: k for k, v in group_map.items()}
+        
+        # Create DataFrame
+        data = []
+        for c in contracts:
+            data.append({
+                "ID": c.id,
+                "合約名稱": c.title,
+                "目前群組": group_map.get(c.group_id, "未分組"),
+                "狀態": c.status
+            })
+            
+        df = pd.DataFrame(data)
+        
+        # Config Column
+        group_options = list(group_name_to_id.keys())
+        
+        edited_df = st.data_editor(
+            df,
+            column_config={
+                "ID": st.column_config.NumberColumn(disabled=True),
+                "合約名稱": st.column_config.TextColumn(disabled=True),
+                "狀態": st.column_config.TextColumn(disabled=True),
+                "目前群組": st.column_config.SelectboxColumn(
+                    "群組",
+                    help="選擇合約所屬群組",
+                    width="medium",
+                    options=group_options,
+                    required=True,
+                )
+            },
+            hide_index=True,
+            use_container_width=True,
+            num_rows="fixed"
+        )
+        
+        if st.button("💾 儲存變更", type="primary"):
+            # Process changes
+            updated_count = 0
+            
+            for index, row in edited_df.iterrows():
+                contract_id = row["ID"]
+                new_group_name = row["目前群組"]
+                new_group_id = group_name_to_id.get(new_group_name)
+                
+                # Find original contract to check if changed
+                # (Optimization: We could compare with original df, but direct DB update is safe enough for small scale)
+                contract = db.query(models.Contract).filter(models.Contract.id == contract_id).first()
+                
+                if contract and contract.group_id != new_group_id:
+                    contract.group_id = new_group_id
+                    updated_count += 1
+            
+            if updated_count > 0:
+                db.commit()
+                st.success(f"已更新 {updated_count} 份合約的群組設定！")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.info("沒有偵測到變更。")
+                
     db.close()
 
 elif st.session_state.selected_contract_id:
