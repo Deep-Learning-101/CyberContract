@@ -1,10 +1,21 @@
+# --- AI 核心 (這是最容易打架的，必須鎖定版本) ---
+langchain==0.3.27
+langchain-community==0.3.31
+langchain-core==0.3.80
+langchain-google-genai==2.0.10
+langgraph==0.2.76
+google-generativeai==0.8.5
+protobuf>=5.0
+
+# --- Web 框架 ---
 fastapi
 uvicorn
-sqlalchemy
-google-generativeai
+streamlit
 python-multipart
-pdf2image
+
+# --- 資料處理與工具 ---
+pandas
+sqlalchemy
 python-dotenv
 aiofiles
-streamlit
-pandas
+pdf2image

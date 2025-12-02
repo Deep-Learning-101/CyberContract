@@ -49,7 +49,7 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # 安裝依賴
-pip install -r requirements.txt
+pip install --no-cache-dir -r requirements.txt
 
 # 設定環境變數 (或直接在環境中設定 API_KEY)
 echo "API_KEY=your_key" > .env
@@ -63,7 +63,7 @@ streamlit run streamlit_app.py
 ```
 或
 ```
-python -m streamlit run streamlit_app.py
+python -m streamlit run streamlit_app.py --server.port 7070 --server.address 0.0.0.0
 ```
 
 應用程式預設運行於 `http://localhost:8501`。
