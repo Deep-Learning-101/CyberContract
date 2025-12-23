@@ -145,3 +145,4 @@ __pycache/
 .DS_Store
 dist/
 desktop.ini
+sql_app.db
